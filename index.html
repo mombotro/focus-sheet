@@ -194,7 +194,7 @@ const LIB = [
 ];
 const byId = id => LIB.find(s=>s.id===id);
 const svgFor = (sym, vb="-60 -60 120 120") =>
-  `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="${C}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${sym.draw()}</svg>`;
+  `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="${C}" stroke-width="5" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="10">${sym.draw()}</svg>`;
 
 /* ===== random symbol generator (recipe-based, not scribble) ===== */
 const pick = a => a[Math.floor(Math.random()*a.length)];
