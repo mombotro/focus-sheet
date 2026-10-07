@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus Sheet Maker</title>
+<style>
+  :root{ --ink:#7a2ab4; }
+  *{ box-sizing:border-box; }
+  /* ---------- System 7 theme (screen only — print stays a clean sheet) ---------- */
+  body{ margin:0; font-family:"Geneva","Tahoma","Verdana",sans-serif; color:#000;
+    background-color:#8b8b8b;
+    background-image:radial-gradient(#7c7c7c 1px, transparent 1.4px), radial-gradient(#9c9c9c 1px, transparent 1.4px);
+    background-size:4px 4px; background-position:0 0, 2px 2px; }
+  .mac-menubar{ position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:18px;
+    background:#fff; border-bottom:2px solid #000; padding:3px 12px;
+    font-family:"Chicago","Charcoal","Geneva",sans-serif; font-size:14px; }
+  .mac-menubar .mb-app{ font-weight:700; }
+  .wrap{ max-width:1140px; margin:0 auto; padding:18px 14px 40px; }
+  h1{ display:none; }
+  .sub{ color:#000; font-size:13px; margin:0 0 14px; background:#dddddd; border:1px solid #000;
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; padding:6px 9px; }
+  .card{ background:#dddddd; border:1px solid #000; border-radius:0;
+    box-shadow:2px 2px 0 rgba(0,0,0,.4), inset 1px 1px 0 #fff, inset -1px -1px 0 #999;
+    padding:14px; margin-bottom:16px; }
+  .mac-bar{ display:flex; align-items:center; gap:8px; margin:-14px -14px 12px; padding:3px 7px;
+    border-bottom:1px solid #000;
+    background:repeating-linear-gradient(to bottom,#f4f4f4 0 2px,#b9b9b9 2px 4px);
+    font-family:"Chicago","Charcoal","Geneva",sans-serif; font-size:13px; }
+  .mac-bar .mac-title{ flex:1; text-align:center; font-weight:700; }
+  .mac-bar .mac-title span{ background:#dddddd; padding:0 10px; }
+  .mac-close,.mac-zoom{ width:11px; height:11px; background:#eeeeee; border:1px solid #000; flex:none;
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; position:relative; }
+  .mac-zoom::after{ content:""; position:absolute; left:1px; top:1px; width:4px; height:4px; border:1px solid #000; border-left:none; border-top:none; }
+  .controls{ display:flex; flex-wrap:wrap; gap:14px 18px; align-items:end; }
+  .field{ display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:700; }
+  .field input[type="text"], .field input[type="number"], .field select{
+    font:inherit; font-weight:400; font-size:13px; padding:3px 6px; border:1px solid #000; border-radius:0;
+    background:#fff; box-shadow:inset 1px 1px 0 #999; }
+  .field input[type="number"]{ width:76px; }
+  .field input[type="color"]{ width:52px; height:32px; border:1px solid #000; border-radius:0; background:#eeeeee; padding:2px;
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; }
+  .field input[type="checkbox"]{ accent-color:#000; width:14px; height:14px; }
+  .check{ flex-direction:row; align-items:center; gap:7px; padding-bottom:8px; }
+  button{ font-family:"Chicago","Charcoal","Geneva",sans-serif; font-size:13px; font-weight:700; color:#000;
+    background:#eeeeee; border:1px solid #000; border-radius:7px; padding:4px 14px; cursor:pointer;
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #aaaaaa, 1px 1px 0 rgba(0,0,0,.3); }
+  button.secondary{ background:#eeeeee; color:#000; }
+  button:active{ background:#555555; color:#fff; }
+  #pdfBtn{ box-shadow:0 0 0 2px #dddddd, 0 0 0 3px #000, inset 1px 1px 0 #fff, inset -1px -1px 0 #aaaaaa; }
+  .hint{ font-size:12.5px; color:#222; margin:10px 0 0; line-height:1.45; }
+  /* ---------- the sheet ---------- */
+  #sheetWrap{ overflow:auto; background:#fff; border:1px solid #000; box-shadow:5px 5px 0 rgba(0,0,0,.35); margin-bottom:16px; }
+  .mac-bar.sheet-bar{ margin:0; }
+  .sheet{ background:#fff; width:100%; aspect-ratio:11/8.5; container-type:inline-size;
+    padding:3.2cqw 4cqw 3.6cqw; margin:0 auto; }
+  .sheet-head{ margin-bottom:2.4cqw; }
+  .sheet-inst{ color:#555; font-size:1.85cqw; }
+  .grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(0,1fr));
+    border:.55cqw solid var(--ink); height:92%; }
+  .cell{ border-right:.42cqw solid var(--ink); border-bottom:.42cqw solid var(--ink); min-width:0; min-height:0; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; background:#fff; padding:0; }
+  .cell:nth-child(4n){ border-right:none; }
+  .cell:nth-child(n+13){ border-bottom:none; }
+  button.cell{ cursor:pointer; }
+  button.cell svg{ width:80%; height:80%; pointer-events:none; }
+  .cell.selected{ outline:.5cqw dashed #000; outline-offset:-.9cqw; }
+  /* ---------- picker ---------- */
+  .picker-head{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .picker{ display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; margin-top:10px; }
+  .pick{ background:#eeeeee; border:1px solid #000; border-radius:0; padding:6px 4px 4px; cursor:pointer; color:#000;
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; }
+  .pick:hover{ background:#ffffff; }
+  .pick:active{ background:#555555; color:#fff; }
+  .pick svg{ width:64px; height:64px; display:block; margin:0 auto; }
+  .pick span{ display:block; font-size:11px; color:inherit; text-align:center; line-height:1.25; }
+  .pick .lvl{ font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:inherit; font-weight:700; }
+  @media print{
+    @page{ size:Letter landscape; margin:0; }
+    html,body{ margin:0; padding:0; background:#fff; }
+    .no-print{ display:none !important; }
+    .wrap{ max-width:none; padding:0; }
+    #sheetWrap{ overflow:visible; border:none; box-shadow:none; margin:0; }
+    .sheet{ width:11in !important; height:8.5in !important; box-shadow:none; margin:0; }
+    .cell.selected{ outline:none; }
+  }
+</style>
+</head>
+<body>
+<div class="mac-menubar no-print">
+  <span class="mb-app">Focus Sheet Maker</span>
+</div>
+<div class="wrap">
+  <div class="no-print">
+    <h1>Focus Sheet Maker</h1>
+    <p class="sub">Build a copy-the-symbol focus sheet: 8 symbols, each with a blank box underneath to copy into. All the cells are the same size, and there's no title or name line — just the instruction and the grid. Prints as one US Letter sheet, landscape.</p>
+
+    <div class="card">
+      <div class="mac-bar"><span class="mac-close"></span><span class="mac-title"><span>Controls</span></span><span class="mac-zoom"></span></div>
+      <div class="controls">
+        <label class="field">Level
+          <select id="difficulty">
+            <option value="simple">Easy</option>
+            <option value="hard" selected>Hard</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </label>
+        <label class="field">Line colour
+          <input type="color" id="ink" value="#7a2ab4">
+        </label>
+        <button id="randomBtn" type="button">🎲 Random 8 from library</button>
+        <button id="genBtn" type="button">✨ Generate 8 new</button>
+        <button id="genOneBtn" type="button" class="secondary">Generate 1 new (selected)</button>
+        <button id="shuffleOneBtn" type="button" class="secondary">Shuffle selected symbol</button>
+        <button id="pdfBtn" type="button">⬇ Export as PDF</button>
+      </div>
+      <p class="hint"><strong>Generate 8 new</strong> invents eight brand-new symbols and puts them on the sheet. Each one is assembled from simple parts — shapes, lines, dividers and end-markers — combined by recipe, so they stay neat and copyable rather than random scribbles. Every click gives you a different set, at the level picked in "Level" above. <span id="selInfo"></span></p>
+      <p class="hint"><strong>Export as PDF:</strong> the button opens the print dialog — choose <em>Save as PDF</em>, paper <em>Letter</em>, orientation <em>Landscape</em>, margins <em>None</em>, scale <em>100%</em>. The page is already set to Letter landscape, so it should come out as a single 11 × 8.5 in page.</p>
+    </div>
+  </div>
+
+  <div id="sheetWrap">
+    <div class="mac-bar sheet-bar no-print"><span class="mac-close"></span><span class="mac-title"><span>untitled</span></span><span class="mac-zoom"></span></div>
+    <div class="sheet" id="sheet">
+      <div class="sheet-head">
+        <div class="sheet-inst">Copy the symbol into the empty box directly below it.</div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <div class="card no-print">
+    <div class="mac-bar"><span class="mac-close"></span><span class="mac-title"><span>Symbol Library</span></span><span class="mac-zoom"></span></div>
+    <div class="picker-head">
+      <span class="hint" style="margin:0">Click a symbol on the sheet first, then click one here to put it in that spot.</span>
+    </div>
+    <div class="picker" id="picker"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===== drawing helpers — symbols live in a -60..60 box ===== */
+let C = "#7a2ab4";
+const L  = (x1,y1,x2,y2,w=5) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${w}"/>`;
+const PL = (pts,w=5) => `<polyline points="${pts}" fill="none" stroke-width="${w}"/>`;
+const PG = (pts,w=5,fill="none") => `<polygon points="${pts}" fill="${fill}" stroke-width="${w}"/>`;
+const CI = (cx,cy,r,w=5,fill="none") => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke-width="${w}"/>`;
+const D  = (cx,cy,r=4) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C}" stroke="none"/>`;
+const RE = (x,y,w,h,sw=5,fill="none") => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke-width="${sw}"/>`;
+const PA = (d,w=5,fill="none") => `<path d="${d}" fill="${fill}" stroke-width="${w}"/>`;
+const vWave = x => { let p=""; for(let i=0;i<=24;i++){ const t=i/24; p+=`${(x+Math.sin(t*Math.PI*3)*6).toFixed(1)},${(-40+80*t).toFixed(1)} `; } return PL(p.trim(),4.5); };
+const hWave = y => { let p=""; for(let i=0;i<=24;i++){ const t=i/24; p+=`${(-46+92*t).toFixed(1)},${(y+Math.sin(t*Math.PI*3)*6).toFixed(1)} `; } return PL(p.trim(),4.5); };
+const sCurve = () => { let p=""; for(let i=0;i<=40;i++){ const t=i/40; p+=`${(Math.sin(t*Math.PI*2)*28).toFixed(1)},${(-42+84*t).toFixed(1)} `; } return PL(p.trim()); };
+const spiral = () => { let p=""; for(let i=0;i<=120;i++){ const t=i/120; const a=-Math.PI/2+t*4*Math.PI; const r=5+37*t; p+=`${(r*Math.cos(a)).toFixed(1)},${(r*Math.sin(a)).toFixed(1)} `; } return PL(p.trim(),4.5); };
+const hexPts = r => { let p=""; for(const deg of [-90,-30,30,90,150,210]){ const a=deg*Math.PI/180; p+=`${(r*Math.cos(a)).toFixed(1)},${(r*Math.sin(a)).toFixed(1)} `; } return p.trim(); };
+
+/* ===== symbol library: 16 simple + 16 harder ===== */
+const LIB = [
+ /* ---- Simple ---- */
+ {id:"diamond-dot", name:"Diamond + circle", lvl:"simple", draw:()=> PG("0,-42 42,0 0,42 -42,0")+CI(0,0,11)},
+ {id:"steps-dot", name:"Steps + dot", lvl:"simple", draw:()=> PL("-42,32 -14,32 -14,4 14,4 14,-24 42,-24")+D(42,-38)},
+ {id:"rainbow", name:"Nested rainbow", lvl:"simple", draw:()=> PA("M -44,28 A 44 44 0 0 1 44 28")+PA("M -30,28 A 30 30 0 0 1 30 28")+PA("M -16,28 A 16 16 0 0 1 16 28")+L(-48,28,48,28)},
+ {id:"venn", name:"Overlapping circles", lvl:"simple", draw:()=> CI(-18,0,28)+CI(18,0,28)},
+ {id:"zigzag-dots", name:"Zigzag + end dots", lvl:"simple", draw:()=> PL("-42,16 -21,-20 0,16 21,-20 42,16")+D(-42,-30)+D(42,32)},
+ {id:"square-diag", name:"Square, diagonal, triangle", lvl:"simple", draw:()=> PG("-12,-26 12,-26 0,-44")+RE(-30,-26,60,52)+L(-30,26,30,-26)},
+ {id:"waves-vert", name:"Three wavy lines", lvl:"simple", draw:()=> vWave(-30)+vWave(0)+vWave(30)},
+ {id:"circle-column", name:"Line through 3 circles", lvl:"simple", draw:()=> L(0,-44,0,44)+CI(0,-28,14)+CI(0,0,14)+CI(0,28,14)},
+ {id:"key", name:"Key", lvl:"simple", draw:()=> CI(-26,0,20)+L(-6,0,46,0)+L(28,0,28,18)+L(46,0,46,26)},
+ {id:"house", name:"House + window", lvl:"simple", draw:()=> PG("-40,42 -40,-10 0,-44 40,-10 40,42")+RE(-10,4,20,20,4.5)},
+ {id:"four-dots", name:"Four circles + plus", lvl:"simple", draw:()=> CI(-28,-28,9,4.5)+CI(28,-28,9,4.5)+CI(-28,28,9,4.5)+CI(28,28,9,4.5)+L(-14,0,14,0)+L(0,-14,0,14)},
+ {id:"sq-spiral", name:"Square spiral", lvl:"simple", draw:()=> PL("-44,-44 44,-44 44,44 -44,44 -44,-21 22,-21 22,22 -18,22 -18,-2 2,-2")},
+ {id:"eye", name:"Eye", lvl:"simple", draw:()=> PA("M -46,0 Q 0,-52 46,0 Q 0,52 -46,0")+CI(0,0,14)},
+ {id:"fish", name:"Fish", lvl:"simple", draw:()=> `<ellipse cx="-12" cy="0" rx="38" ry="23" fill="none" stroke-width="5"/>`+PG("22,0 44,-25 44,25")+D(-28,-4)},
+ {id:"matches", name:"Three matchsticks", lvl:"simple", draw:()=> CI(-30,-27,11,4.5)+CI(0,-27,11,4.5)+CI(30,-27,11,4.5)+L(-30,-16,-30,42)+L(0,-16,0,42)+L(30,-16,30,42)},
+ {id:"bowtie", name:"Bowtie + line", lvl:"simple", draw:()=> PG("-45,-28 -45,20 0,-4")+PG("45,-28 45,20 0,-4")+D(0,-4)+L(-45,42,45,42)},
+ /* ---- Harder ---- */
+ {id:"tri-star", name:"Overlapping triangles + dot", lvl:"hard", draw:()=> PG("0,-44 46,31 -46,31")+PG("0,44 46,-31 -46,-31")+D(0,0)},
+ {id:"window", name:"Window: dot, circle, X", lvl:"hard", draw:()=> RE(-44,-40,88,80)+L(-15,-40,-15,40)+L(15,-40,15,40)+L(-44,0,44,0)+D(-29,-20)+CI(0,-20,9,4.5)+L(22,7,40,36)+L(40,7,22,36)},
+ {id:"maze", name:"Stepped maze, start to end", lvl:"hard", draw:()=> PL("-47,36 -18,36 -18,-4 12,-4 12,-39 47,-39 47,-6")+D(-47,36,5)+CI(-47,36,8,4)+CI(47,4,7,4)},
+ {id:"circle-diamond", name:"Circle, diamond, circle, dot", lvl:"hard", draw:()=> D(0,-52)+CI(0,0,42)+PG("0,-30 30,0 0,30 -30,0")+CI(0,0,13,4.5)},
+ {id:"crosshair", name:"Crosshair, dots on 2 arms", lvl:"hard", draw:()=> L(0,-48,0,48)+L(-48,0,48,0)+CI(0,0,34)+CI(0,0,11,4.5)+D(0,-48)+D(48,0)},
+ {id:"zigzag-lines", name:"Zigzag crossing 3 lines", lvl:"hard", draw:()=> L(-47,-28,47,-28,4.5)+L(-47,0,47,0,4.5)+L(-47,28,47,28,4.5)+PL("0,-48 10,-24 -10,0 10,24 0,48")+D(0,-48,3.5)+D(0,48,3.5)},
+ {id:"flag", name:"Flag with X + centre circle", lvl:"hard", draw:()=> L(-39,-48,-39,41)+L(-49,41,-22,41)+L(-39,-48,46,-48,4.5)+L(-39,-11,46,-11,4.5)+L(46,-48,46,-11,4.5)+L(-39,-48,46,-11,4)+L(-39,-11,46,-48,4)+CI(4,-29,10,4.5,"#ffffff")},
+ {id:"s-line", name:"S-curve crossing a line", lvl:"hard", draw:()=> L(-48,0,48,0,4.5)+sCurve()+CI(0,-42,7,4)+CI(0,42,7,4)},
+ {id:"sq-diamond-star", name:"Square + diamond + tiny square", lvl:"hard", draw:()=> RE(-36,-36,72,72)+PG("0,-48 48,0 0,48 -48,0")+RE(-11,-11,22,22,4.5)+D(-26,0,3.5)},
+ {id:"cross-ends", name:"Crossed lines, 3 end markers", lvl:"hard", draw:()=> L(-42,-35,42,35)+L(-42,35,42,-35)+L(-48,0,48,0,4.5)+CI(42,-35,7,4,"#ffffff")+D(-42,35,4)+PG("-42,-49 -34,-35 -50,-35",4)},
+ {id:"spiral", name:"Spiral, centre + end dots", lvl:"hard", draw:()=> spiral()+D(0,0,3.5)+D(0,-42,4)},
+ {id:"bars-caps", name:"Four bars, four different tops", lvl:"hard", draw:()=> L(-48,42,48,42)+L(-37,42,-37,-8)+L(-12,42,-12,-36)+L(13,42,13,-19)+L(40,42,40,-44)+L(-45,-8,-29,-8,4.5)+CI(-12,-44,8,4)+D(13,-24,4)+PG("40,-58 48,-44 32,-44",4)},
+ {id:"hex-y", name:"Hexagon split in a Y + dot", lvl:"hard", draw:()=> PG(hexPts(45))+L(0,0,0,-45,4.5)+L(0,0,39,22,4.5)+L(0,0,-39,22,4.5)+CI(0,0,8,4,"#ffffff")+D(13,-22,3.5)},
+ {id:"waves-pierced", name:"3 waves pierced by a line", lvl:"hard", draw:()=> hWave(-30)+hWave(0)+hWave(30)+L(0,-48,0,48)+CI(0,-48,6,4,"#ffffff")+CI(0,48,6,4,"#ffffff")},
+ {id:"arch", name:"Double arch + handle dot", lvl:"hard", draw:()=> PA("M -36,36 L -36,-8 A 36 36 0 0 1 36,-8 L 36,36")+PA("M -21,36 L -21,-8 A 21 21 0 0 1 21,-8 L 21,36",4.5)+L(-48,36,48,36)+L(-48,47,48,47,4.5)+D(11,14,3.5)},
+ {id:"tri-ladder", name:"Divided triangle, dot + circle", lvl:"hard", draw:()=> PG("-42,-42 -42,42 42,42")+L(-42,14,14,14,4.5)+L(-14,-14,-14,42,4.5)+D(24,28,4)+CI(-28,-28,7,4)},
+];
+const byId = id => LIB.find(s=>s.id===id);
+const svgFor = (sym, vb="-60 -60 120 120") =>
+  `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="${C}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${sym.draw()}</svg>`;
+
+/* ===== random symbol generator (recipe-based, not scribble) ===== */
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const chance = p => Math.random() < p;
+const shuffleArr = a => { const x=[...a]; for(let i=x.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [x[i],x[j]]=[x[j],x[i]]; } return x; };
+/* a basic shape centred at (dx,dy), "size" s = half-width */
+function shape(name, s, dx=0, dy=0, w=5){
+  switch(name){
+    case "circle":  return CI(dx,dy,s,w);
+    case "square":  return RE(dx-s,dy-s,2*s,2*s,w);
+    case "diamond": return PG(`${dx},${dy-s} ${dx+s},${dy} ${dx},${dy+s} ${dx-s},${dy}`,w);
+    case "triangle":return PG(`${dx},${dy-s} ${dx+s},${dy+s} ${dx-s},${dy+s}`,w);
+    case "triangle-down": return PG(`${dx},${dy+s} ${dx+s},${dy-s} ${dx-s},${dy-s}`,w);
+    case "hexagon": { let p=""; for(const deg of [-90,-30,30,90,150,210]){ const a=deg*Math.PI/180; p+=`${(dx+s*Math.cos(a)).toFixed(1)},${(dy+s*Math.sin(a)).toFixed(1)} `; } return PG(p.trim(),w); }
+    case "rect":    return RE(dx-s*1.25,dy-s*0.72,s*2.5,s*1.44,w);
+    case "arch":    return PA(`M ${dx-s},${dy+s} L ${dx-s},${dy-s*0.2} A ${s} ${s} 0 0 1 ${dx+s},${dy-s*0.2} L ${dx+s},${dy+s}`,w);
+  }
+  return "";
+}
+const SHAPES = ["circle","square","diamond","triangle","triangle-down","hexagon","rect","arch"];
+/* a small marker at (x,y): filled dot, open circle, tiny triangle, or nothing */
+function marker(kind, x, y){
+  if(kind==="dot") return D(x,y,4);
+  if(kind==="circle") return CI(x,y,7,4,"#ffffff");
+  if(kind==="triangle") return PG(`${x},${y-8} ${x+8},${y+6} ${x-8},${y+6}`,4);
+  return "";
+}
+const MARKERS = ["dot","circle","triangle","plain"];
+const COMPASS = { "top":[0,-52], "bottom":[0,52], "left":[-52,0], "right":[52,0],
+  "top-left":[-38,-38], "top-right":[38,-38], "bottom-left":[-38,38], "bottom-right":[38,38] };
+
+function genSimple(){
+  const recipe = Math.floor(Math.random()*4);
+  if(recipe===0){ /* two nested shapes */
+    const outer = pick(SHAPES); let inner = pick(SHAPES.filter(s=>s!==outer));
+    let m = shape(outer,42) + shape(inner,19,0,0,4.5);
+    let extra = "";
+    if(chance(.45)){ const [px,py] = [0,0]; m += D(px,py,4); extra = " + centre dot"; }
+    return { name:`Generated: ${outer} with ${inner} inside${extra}`, sig:`n2-${outer}-${inner}-${extra}`, draw:()=>m };
+  }
+  if(recipe===1){ /* row of three, one is different somehow */
+    const kind = pick(["circles","triangles","waves","bars"]);
+    let m="", desc="";
+    if(kind==="circles"){ const diff=Math.floor(Math.random()*3); [-32,0,32].forEach((x,i)=>{ m+=CI(x,0,15); if(i===diff) m+=D(x,0,4); }); desc=`three circles, dot in ${["left","middle","right"][diff]} one`; }
+    if(kind==="triangles"){ const diff=Math.floor(Math.random()*3); [-32,0,32].forEach((x,i)=>{ m+=shape(i===diff?"triangle-down":"triangle",16,x,0,4.5); }); desc=`three triangles, ${["left","middle","right"][diff]} one upside down`; }
+    if(kind==="waves"){ m=vWave(-30)+vWave(0)+vWave(30); const diff=pick([-30,0,32]); m+=D(diff,50,4); desc="three wavy lines, dot under one"; }
+    if(kind==="bars"){ const hs=[-18,-36,-26]; [-32,0,32].forEach((x,i)=>{ m+=L(x,42,x,hs[i]); }); m+=L(-46,42,46,42); const diff=Math.floor(Math.random()*3); m+=CI([-32,0,32][diff],[-18,-36,-26][diff]-11,7,4); desc="three bars on a line, circle on one top"; }
+    return { name:`Generated: ${desc}`, sig:`r3-${kind}-${desc}`, draw:()=>m };
+  }
+  if(recipe===2){ /* a path with end markers */
+    const kind = pick(["zigzag","steps","wave","plus"]);
+    let m="", desc="";
+    if(kind==="zigzag"){ m=PL("-44,18 -22,-20 0,18 22,-20 44,18"); desc="zigzag"; }
+    if(kind==="steps"){ m=PL("-44,34 -16,34 -16,4 14,4 14,-26 44,-26"); desc="steps"; }
+    if(kind==="wave"){ m=hWave(0); desc="horizontal wave"; }
+    if(kind==="plus"){ m=L(-40,0,40,0)+L(0,-40,0,40); desc="plus"; }
+    const ends = kind==="plus" ? [[-40,0],[40,0],[0,-40],[0,40]] : kind==="wave" ? [[-46,0],[46,0]] : kind==="steps" ? [[-44,34],[44,-26]] : [[-44,18],[44,18]];
+    const kinds = shuffleArr(MARKERS);
+    ends.forEach((e,i)=>{ m += marker(kinds[i%kinds.length], e[0], e[1]); });
+    return { name:`Generated: ${desc} with different end markers`, sig:`path-${kind}-${kinds.join(",")}`, draw:()=>m };
+  }
+  /* two overlapping shapes */
+  const a = pick(SHAPES); let b = pick(SHAPES.filter(s=>s!==a));
+  let m = shape(a,30,-16,0) + shape(b,30,16,0);
+  let extra = "";
+  if(chance(.5)){ m += D(0,0,4); extra = " + dot where they cross"; }
+  return { name:`Generated: overlapping ${a} and ${b}${extra}`, sig:`ov-${a}-${b}-${extra}`, draw:()=>m };
+}
+
+function genHard(){
+  const recipe = Math.floor(Math.random()*7);
+  if(recipe===0){ /* nested three deep + outside dot */
+    const [a,b,c] = shuffleArr(SHAPES).slice(0,3);
+    const posName = pick(Object.keys(COMPASS)); const [px,py] = COMPASS[posName];
+    const m = shape(a,42) + shape(b,29) + shape(c,15,0,0,4.5) + D(px*0.98,py*0.98,4);
+    return { name:`Generated: ${a} → ${b} → ${c}, dot at ${posName}`, sig:`n3-${a}-${b}-${c}-${posName}`, draw:()=>m };
+  }
+  if(recipe===1){ /* divided window: dot, circle, X in three different cells */
+    const cells = [[-29,-20],[0,-20],[29,-20],[-29,20],[0,20],[29,20]];
+    const names = ["top-left","top-middle","top-right","bottom-left","bottom-middle","bottom-right"];
+    const chosen = shuffleArr([0,1,2,3,4,5]).slice(0,3);
+    let m = RE(-44,-40,88,80) + L(-15,-40,-15,40) + L(15,-40,15,40) + L(-44,0,44,0);
+    m += D(cells[chosen[0]][0], cells[chosen[0]][1], 4);
+    m += CI(cells[chosen[1]][0], cells[chosen[1]][1], 9, 4.5);
+    const [xx,yy] = cells[chosen[2]]; m += L(xx-8,yy-11,xx+8,yy+11,4.5) + L(xx+8,yy-11,xx-8,yy+11,4.5);
+    return { name:`Generated: window — dot ${names[chosen[0]]}, circle ${names[chosen[1]]}, X ${names[chosen[2]]}`,
+             sig:`win-${chosen.join("-")}`, draw:()=>m };
+  }
+  if(recipe===2){ /* stepped maze path across three lanes */
+    const lanes = [-30,0,30]; let ys = [pick(lanes)];
+    for(let i=0;i<4;i++){ ys.push(pick(lanes.filter(y=>y!==ys[ys.length-1]))); }
+    const xs = [-46,-23,0,23,46]; let pts = `${xs[0]},${ys[0]}`;
+    for(let i=1;i<5;i++){ pts += ` ${xs[i]},${ys[i-1]} ${xs[i]},${ys[i]}`; }
+    const m = PL(pts) + D(xs[0],ys[0],4.5) + CI(xs[4],ys[4]+(ys[4]===30?-14:14),7,4);
+    return { name:`Generated: stepped maze, filled start, open end`, sig:`maze-${ys.join("-")}`, draw:()=>m };
+  }
+  if(recipe===3){ /* stack of lines/waves pierced by a zigzag or straight line */
+    const wavy = chance(.5);
+    let m = [-28,0,28].map(y => wavy ? hWave(y) : L(-46,y,46,y,4.5)).join("");
+    const pierce = pick(["straight","zigzag"]);
+    m += pierce==="straight" ? L(0,-48,0,48) : PL("0,-48 10,-24 -10,0 10,24 0,48");
+    m += marker(pick(["circle","dot"]),0,-48) + marker(pick(["circle","dot"]),0,48);
+    return { name:`Generated: three ${wavy?"wavy":"straight"} lines pierced by a ${pierce} line`, sig:`pierce-${wavy}-${pierce}`, draw:()=>m };
+  }
+  if(recipe===4){ /* cross or X, every end a different marker */
+    const kind = pick(["plus","x"]);
+    const ends = kind==="plus" ? [[0,-46],[46,0],[0,46],[-46,0]] : [[-40,-40],[40,-40],[40,40],[-40,40]];
+    let m = kind==="plus" ? L(0,-46,0,46)+L(-46,0,46,0) : L(-40,-40,40,40)+L(-40,40,40,-40);
+    if(chance(.5)) m += CI(0,0,11,4.5,"#ffffff");
+    const kinds = shuffleArr(MARKERS);
+    ends.forEach((e,i)=>{ m += marker(kinds[i], e[0], e[1]); });
+    return { name:`Generated: ${kind==="plus"?"cross":"X"} with a different marker on each end`, sig:`ends-${kind}-${kinds.join(",")}`, draw:()=>m };
+  }
+  if(recipe===5){ /* four bars, different heights, different tops */
+    const xs = [-39,-13,13,39]; const tops = shuffleArr([-8,-32,-18,-38]);
+    const caps = shuffleArr(["tick","circle","dot","triangle"]);
+    let m = L(-50,44,50,44);
+    xs.forEach((x,i)=>{ m += L(x,44,x,tops[i]); });
+    xs.forEach((x,i)=>{
+      const t = tops[i];
+      if(caps[i]==="tick") m += L(x-8,t,x+8,t,4.5);
+      if(caps[i]==="circle") m += CI(x,t-9,7.5,4);
+      if(caps[i]==="dot") m += D(x,t-4,4);
+      if(caps[i]==="triangle") m += PG(`${x},${t-17} ${x+8},${t-2} ${x-8},${t-2}`,4);
+    });
+    return { name:`Generated: four bars, tops left-to-right: ${caps.join(", ")}`, sig:`bars-${tops.join("-")}-${caps.join("-")}`, draw:()=>m };
+  }
+  /* divided big shape with markers in specific sectors */
+  const base = pick(["hexagon","triangle","circle","square"]);
+  let m = shape(base,44), sectors;
+  const split = pick(["y","cross","h-v"]);
+  if(split==="y"){ m += L(0,0,0,-40,4.5)+L(0,0,34,24,4.5)+L(0,0,-34,24,4.5); sectors = [[0,-24],[24,14],[-24,14]]; }
+  else if(split==="cross"){ m += L(-44,0,44,0,4.5)+L(0,-44,0,44,4.5); sectors = [[-22,-22],[22,-22],[22,22],[-22,22]]; }
+  else { m += L(-44,-6,44,-6,4.5)+L(-8,-44,-8,44,4.5); sectors = [[-26,-26],[20,-26],[-26,20],[20,20]]; }
+  m += CI(0,0,8,4,"#ffffff");
+  const si = shuffleArr(sectors.map((_,i)=>i));
+  m += D(sectors[si[0]][0], sectors[si[0]][1], 4);
+  m += CI(sectors[si[1]][0], sectors[si[1]][1], 7.5, 4);
+  return { name:`Generated: divided ${base} (${split} split), dot and circle in different sections`,
+           sig:`div-${base}-${split}-${si[0]}-${si[1]}`, draw:()=>m };
+}
+function genSymbol(level){
+  const lvl = level==="mixed" ? (chance(.5)?"simple":"hard") : level;
+  const g = lvl==="simple" ? genSimple() : genHard();
+  return { gen:true, lvl, name:g.name, sig:g.sig, draw:g.draw };
+}
+const slotSig = s => s.sig || s.id;
+function generateSet(){
+  const level = document.getElementById("difficulty").value;
+  const out = [], seen = new Set(slots.map(slotSig));
+  let guard = 0;
+  while(out.length < 8 && guard++ < 300){
+    const s = genSymbol(level);
+    if(seen.has(s.sig)) continue;
+    seen.add(s.sig); out.push(s);
+  }
+  slots = out; selected = 0; renderSheet();
+}
+function generateOne(){
+  const level = document.getElementById("difficulty").value;
+  const seen = new Set(slots.map(slotSig)); let s = genSymbol(level), guard = 0;
+  while(seen.has(s.sig) && guard++ < 100) s = genSymbol(level);
+  slots[selected] = s; renderSheet();
+}
+
+/* ===== state + rendering ===== */
+let slots = ["tri-star","window","maze","circle-diamond","crosshair","zigzag-lines","flag","s-line"].map(byId);
+let selected = 0;
+const grid = document.getElementById("grid");
+const picker = document.getElementById("picker");
+const sheetEl = document.getElementById("sheet");
+
+function renderSheet(){
+  C = document.getElementById("ink").value;
+  sheetEl.style.setProperty("--ink", C);
+  grid.innerHTML = "";
+  for(let row=0; row<4; row++){
+    for(let col=0; col<4; col++){
+      const cell = document.createElement(row%2===0 ? "button" : "div");
+      cell.className = "cell";
+      if(row%2===0){
+        const idx = (row/2)*4 + col;
+        cell.type = "button";
+        cell.innerHTML = svgFor(slots[idx]);
+        if(idx===selected) cell.classList.add("selected");
+        cell.title = slots[idx].name + " — click to select, double-click to shuffle";
+        cell.addEventListener("click", ()=>{ selected = idx; renderSheet(); });
+        cell.addEventListener("dblclick", ()=>{ selected = idx; shuffleOne(); });
+      }
+      grid.appendChild(cell);
+    }
+  }
+  const si = document.getElementById("selInfo");
+  if(si) si.textContent = ` Selected: ${slots[selected].name}${slots[selected].gen ? " (generated)" : ""}.`;
+  renderPicker();
+}
+function renderPicker(){
+  picker.innerHTML = "";
+  for(const sym of LIB){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pick";
+    b.innerHTML = svgFor(sym) + `<span>${sym.name}</span><span class="lvl">${sym.lvl==="hard"?"Hard":"Easy"}</span>`;
+    b.addEventListener("click", ()=>{ slots[selected] = sym; renderSheet(); });
+    picker.appendChild(b);
+  }
+}
+function pool(){
+  const d = document.getElementById("difficulty").value;
+  return LIB.filter(s => d==="mixed" ? true : s.lvl===d);
+}
+function shuffled(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function randomSet(){ slots = shuffled(pool()).slice(0,8); selected = 0; renderSheet(); }
+function shuffleOne(){
+  const options = pool().filter(id => !slots.includes(id));
+  if(options.length) slots[selected] = options[Math.floor(Math.random()*options.length)];
+  renderSheet();
+}
+document.getElementById("randomBtn").addEventListener("click", randomSet);
+document.getElementById("genBtn").addEventListener("click", generateSet);
+document.getElementById("genOneBtn").addEventListener("click", generateOne);
+document.getElementById("shuffleOneBtn").addEventListener("click", shuffleOne);
+document.getElementById("pdfBtn").addEventListener("click", ()=>{
+  document.title = "Focus";
+  window.print();
+});
+for(const id of ["difficulty","ink"]) document.getElementById(id).addEventListener("input", renderSheet);
+document.getElementById("difficulty").addEventListener("change", renderSheet);
+renderSheet();
+</script>
+</body>
+</html>
