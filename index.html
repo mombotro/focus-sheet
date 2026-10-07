@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Focus Sheet Maker</title>
 <style>
-  :root{ --ink:#7a2ab4; }
+  :root{ --ink:#000000; }
   *{ box-sizing:border-box; }
   /* ---------- System 7 theme (screen only — print stays a clean sheet) ---------- */
   body{ margin:0; font-family:"Geneva","Tahoma","Verdana",sans-serif; color:#000;
@@ -106,7 +106,7 @@
           </select>
         </label>
         <label class="field">Line colour
-          <input type="color" id="ink" value="#7a2ab4">
+          <input type="color" id="ink" value="#000000">
         </label>
         <button id="randomBtn" type="button">🎲 Random 8 from library</button>
         <button id="genBtn" type="button">✨ Generate 8 new</button>
@@ -114,7 +114,7 @@
         <button id="shuffleOneBtn" type="button" class="secondary">Shuffle selected symbol</button>
         <button id="pdfBtn" type="button">⬇ Export as PDF</button>
       </div>
-      <p class="hint"><strong>Generate 8 new</strong> invents eight brand-new symbols and puts them on the sheet. Each one is assembled from simple parts — shapes, lines, dividers and end-markers — combined by recipe, so they stay neat and copyable rather than random scribbles. Every click gives you a different set, at the level picked in "Level" above. <span id="selInfo"></span></p>
+      <p class="hint"><strong>Generate 8 new</strong> invents eight brand-new symbols and puts them on the sheet. Every click gives you a different set, at the level picked in "Level" above.</p>
       <p class="hint"><strong>Export as PDF:</strong> the button opens the print dialog — choose <em>Save as PDF</em>, paper <em>Letter</em>, orientation <em>Landscape</em>, margins <em>None</em>, scale <em>100%</em>. The page is already set to Letter landscape, so it should come out as a single 11 × 8.5 in page.</p>
     </div>
   </div>
@@ -141,7 +141,7 @@
 <script>
 "use strict";
 /* ===== drawing helpers — symbols live in a -60..60 box ===== */
-let C = "#7a2ab4";
+let C = "#000000";
 const L  = (x1,y1,x2,y2,w=5) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${w}"/>`;
 const PL = (pts,w=5) => `<polyline points="${pts}" fill="none" stroke-width="${w}"/>`;
 const PG = (pts,w=5,fill="none") => `<polygon points="${pts}" fill="${fill}" stroke-width="${w}"/>`;
@@ -387,8 +387,6 @@ function renderSheet(){
       grid.appendChild(cell);
     }
   }
-  const si = document.getElementById("selInfo");
-  if(si) si.textContent = ` Selected: ${slots[selected].name}${slots[selected].gen ? " (generated)" : ""}.`;
   renderPicker();
 }
 function renderPicker(){
